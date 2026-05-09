@@ -267,108 +267,141 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
         )}
       </AnimatePresence>
 
-      {/* Main Table Container */}
+      {/* Main Container */}
       <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-950/50 border-b border-slate-800">
-                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Ticket ID</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Project Name</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Status</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">PIC Name</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Owner / Div</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest italic text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/50">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center gap-4">
-                       <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin" />
-                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Synchronizing Master Hub...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredProjects.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center gap-4">
-                       <AlertCircle className="w-10 h-10 text-slate-700" />
-                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">No Projects Found in the Perimeter</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredProjects.map((p, i) => (
-                <tr 
-                  key={p.id} 
-                  className="group hover:bg-indigo-500/[0.05] border-b border-slate-800/50 last:border-0 transition-all cursor-pointer"
-                  onClick={() => handleOpenDetail(p)}
-                >
-                  <td className="px-6 py-5">
-                    <span className="px-2 py-1 bg-slate-950 border border-slate-800/80 rounded font-mono text-[10px] text-indigo-400 font-bold group-hover:border-indigo-500/50 transition-colors">{p.ticket_id}</span>
-                  </td>
-                  <td className="px-6 py-5 max-w-[240px]">
-                    <div className="relative">
-                      <p className="text-sm font-black text-white italic tracking-tight truncate group-hover:whitespace-normal group-hover:overflow-visible group-hover:relative group-hover:z-10 group-hover:bg-slate-900/90 group-hover:p-1 group-hover:rounded">
-                        {p.project_name}
-                      </p>
-                      <p className="text-[9px] text-slate-600 font-bold tracking-widest uppercase mt-0.5">Updated: {format(new Date(p.updated_at), 'dd MMM yyyy')}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest transition-all",
-                      p.status === 'DONE' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]" :
-                      p.status === 'ON PROGRESS' ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)]" :
-                      p.status === 'ON QUEUE' ? "bg-purple-500/10 text-purple-400 border-purple-500/20" :
-                      "bg-slate-500/10 text-slate-400 border-slate-500/20"
-                    )}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-2 max-w-[150px]">
-                       <div className="shrink-0 w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center border border-indigo-500/20 group-hover:border-indigo-500/50">
-                          <UserIcon className="w-3 h-3 text-indigo-400" />
-                       </div>
-                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-tight truncate group-hover:whitespace-normal">{p.pic_name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <p className="text-[10px] font-black text-white italic truncate max-w-[150px] group-hover:whitespace-normal">{p.owner_name}</p>
-                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{p.div_owner}</p>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center justify-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                       <button 
-                         onClick={(e) => {
-                           e.stopPropagation();
-                           handleOpenDetail(p);
-                           setTimeout(() => setIsEditMode(true), 100);
-                         }}
-                         className="p-2.5 bg-slate-800 hover:bg-amber-600 text-slate-400 hover:text-white rounded-xl transition-all shadow-lg border border-slate-700"
-                         title="Edit Project"
-                       >
-                         <Activity className="w-4 h-4" />
-                       </button>
-                       <button 
-                         onClick={(e) => {
-                           e.stopPropagation();
-                           handleOpenAudit(p);
-                         }}
-                         className="p-2.5 bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white rounded-xl transition-all shadow-lg border border-slate-700"
-                         title="History & Audit"
-                       >
-                         <History className="w-4 h-4" />
-                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Header - Desktop Only */}
+        {!isMobile && (
+          <div className="grid grid-cols-[120px_1fr_150px_180px_180px_120px] bg-slate-950/50 border-b border-slate-800 px-6 py-5">
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Ticket ID</div>
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Project Name</div>
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Status</div>
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">PIC Name</div>
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Owner / Div</div>
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic text-center">Actions</div>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto scrollbar-hide divide-y divide-slate-800/50">
+          {loading ? (
+            <div className="px-6 py-20 text-center">
+              <div className="flex flex-col items-center gap-4">
+                 <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin" />
+                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Synchronizing Master Hub...</span>
+              </div>
+            </div>
+          ) : filteredProjects.length === 0 ? (
+            <div className="px-6 py-20 text-center">
+              <div className="flex flex-col items-center gap-4">
+                 <AlertCircle className="w-10 h-10 text-slate-700" />
+                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">No Projects Found in the Perimeter</span>
+              </div>
+            </div>
+          ) : filteredProjects.map((p) => (
+            <div 
+              key={p.id} 
+              className={cn(
+                "group hover:bg-indigo-500/[0.05] transition-all cursor-pointer p-4 md:px-6 md:py-5",
+                "flex flex-col md:grid md:grid-cols-[120px_1fr_150px_180px_180px_120px] md:items-center gap-4 md:gap-0"
+              )}
+              onClick={() => handleOpenDetail(p)}
+            >
+              {/* Ticket ID */}
+              <div className="flex items-center justify-between md:block">
+                <span className="px-2 py-1 bg-slate-950 border border-slate-800/80 rounded font-mono text-[10px] text-indigo-400 font-bold group-hover:border-indigo-500/50 transition-colors">
+                  {p.ticket_id}
+                </span>
+                {isMobile && (
+                  <span className={cn(
+                    "px-3 py-1 rounded-full text-[8px] font-black border uppercase tracking-widest transition-all",
+                    p.status === 'DONE' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]" :
+                    p.status === 'ON PROGRESS' ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)]" :
+                    p.status === 'ON QUEUE' ? "bg-purple-500/10 text-purple-400 border-purple-500/20" :
+                    "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                  )}>
+                    {p.status}
+                  </span>
+                )}
+              </div>
+
+              {/* Project Name */}
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm md:text-base font-black text-white italic tracking-tight line-clamp-2 md:line-clamp-1 group-hover:text-indigo-400 transition-colors">
+                  {p.project_name}
+                </h3>
+                <p className="text-[9px] text-slate-600 font-bold tracking-widest uppercase mt-1">
+                  Updated: {format(new Date(p.updated_at), 'dd MMM yyyy')}
+                </p>
+              </div>
+
+              {/* Status - Desktop only here as mobile has it at the top */}
+              {!isMobile && (
+                <div>
+                  <span className={cn(
+                    "px-3 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest transition-all",
+                    p.status === 'DONE' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
+                    p.status === 'ON PROGRESS' ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" :
+                    p.status === 'ON QUEUE' ? "bg-purple-500/10 text-purple-400 border-purple-500/20" :
+                    "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                  )}>
+                    {p.status}
+                  </span>
+                </div>
+              )}
+
+              {/* PIC Name */}
+              <div className="flex items-center gap-3">
+                 <div className="shrink-0 w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-indigo-500/20 group-hover:border-indigo-500/50">
+                    <UserIcon className="w-4 h-4 text-indigo-400" />
+                 </div>
+                 <div className="min-w-0">
+                    <p className="text-[10px] md:text-[11px] font-black text-slate-300 uppercase tracking-tight truncate">
+                      {p.pic_name}
+                    </p>
+                    {isMobile && <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">PIC PERSONNEL</p>}
+                 </div>
+              </div>
+
+              {/* Owner / Div */}
+              <div>
+                <p className="text-[10px] md:text-[11px] font-black text-white italic truncate max-w-[150px] md:max-w-none">
+                  {p.owner_name}
+                </p>
+                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
+                  {p.div_owner}
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className={cn(
+                "flex items-center gap-2",
+                isMobile ? "justify-end pt-2 border-t border-slate-800" : "justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              )}>
+                 <button 
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     handleOpenDetail(p);
+                     setTimeout(() => setIsEditMode(true), 100);
+                   }}
+                   className="p-2.5 bg-slate-800 hover:bg-amber-600 text-slate-400 hover:text-white rounded-xl transition-all shadow-lg border border-slate-700 flex items-center gap-2"
+                   title="Edit Project"
+                 >
+                   <Activity className="w-4 h-4" />
+                   {isMobile && <span className="text-[10px] font-bold uppercase">Edit</span>}
+                 </button>
+                 <button 
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     handleOpenAudit(p);
+                   }}
+                   className="p-2.5 bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white rounded-xl transition-all shadow-lg border border-slate-700 flex items-center gap-2"
+                   title="History & Audit"
+                 >
+                   <History className="w-4 h-4" />
+                   {isMobile && <span className="text-[10px] font-bold uppercase">Logs</span>}
+                 </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

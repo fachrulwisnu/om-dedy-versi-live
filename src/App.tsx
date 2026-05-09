@@ -922,6 +922,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProjectsMobileExpanded, setIsProjectsMobileExpanded] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -1648,7 +1649,7 @@ export default function App() {
 
   if (loading && projects.length === 0) {
     return (
-      <div className="fixed inset-0 bg-slate-50 dark:bg-[#0B1120] flex flex-col items-center justify-center z-[9999] transition-colors">
+      <div className="fixed inset-0 bg-[#0B1120] flex flex-col items-center justify-center z-[9999] transition-colors">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -1762,7 +1763,71 @@ export default function App() {
             </div>
 
             <nav className="flex-1 overflow-y-auto py-6">
-              {menuItems.map((item, i) => (
+              {/* Project List Group (Synced with Desktop) */}
+              <div className="mb-2">
+                <button
+                  onClick={() => {
+                    setIsProjectsMobileExpanded(!isProjectsMobileExpanded);
+                    setActiveView('PROJECTS');
+                    setSelectedProjectId(null);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-between py-4 px-6 transition-all",
+                    (activeView === 'PROJECTS' || activeView === 'TIMELINE' || activeView === 'GANTT_DETAIL' || activeView === 'TOR_MONITOR')
+                      ? "text-indigo-600 dark:text-white bg-indigo-600/10 border-r-4 border-indigo-500" 
+                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5"
+                  )}
+                >
+                  <div className="flex items-center">
+                    <LayoutDashboard className={cn("w-6 h-6 shrink-0", (activeView === 'PROJECTS') ? "text-indigo-400" : "text-slate-500")} />
+                    <span className="ml-4 font-bold text-sm uppercase tracking-widest text-left">Project List</span>
+                  </div>
+                  <ChevronDown className={cn("w-5 h-5 text-slate-500 transition-transform", !isProjectsMobileExpanded && "-rotate-90")} />
+                </button>
+
+                {isProjectsMobileExpanded && (
+                  <div className="mt-1 ml-6 border-l border-slate-200 dark:border-slate-800 space-y-1">
+                    <button
+                      onClick={() => { setActiveView('TIMELINE'); setSelectedProjectId(null); setIsMobileMenuOpen(false); }}
+                      className={cn(
+                        "w-full flex items-center py-3 px-6 transition-all text-[11px] font-bold uppercase tracking-widest",
+                        activeView === 'TIMELINE' ? "text-indigo-500" : "text-slate-500"
+                      )}
+                    >
+                      <BarChart3 className="w-4 h-4 mr-3" />
+                      Om Dedy Timeline
+                    </button>
+                    {selectedProjectId && (
+                      <button
+                        onClick={() => { setIsMobileMenuOpen(false); navigate(`/detail-timeline/${selectedProjectId}`); }}
+                        className={cn(
+                          "w-full flex items-center py-3 px-6 transition-all text-[11px] font-bold uppercase tracking-widest",
+                          activeView === 'GANTT_DETAIL' ? "text-indigo-500" : "text-slate-500"
+                        )}
+                      >
+                        <Activity className="w-4 h-4 mr-3" />
+                        Detail Timeline
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => { setActiveView('TOR_MONITOR'); setIsMobileMenuOpen(false); }}
+                        className={cn(
+                          "w-full flex items-center py-3 px-6 transition-all text-[11px] font-bold uppercase tracking-widest",
+                          activeView === 'TOR_MONITOR' ? "text-indigo-500" : "text-slate-500"
+                        )}
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-3" />
+                        Tor Monitor
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Remaining items */}
+              {menuItems.filter(item => !['PROJECTS', 'TIMELINE', 'GANTT_DETAIL', 'TOR_MONITOR'].includes(item.id)).map((item, i) => (
                 <button
                   key={getSafeKey({id: item.id}, i, 'mobile-nav-item')}
                   onClick={() => { 
@@ -1788,7 +1853,7 @@ export default function App() {
               ))}
             </nav>
 
-            <div className="p-6 border-t border-slate-200 dark:border-slate-800">
+            <div className="p-6 border-t border-slate-200 dark:border-slate-800 mt-8 shrink-0">
               {user ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-4 p-4 bg-white dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -1836,7 +1901,7 @@ export default function App() {
       {/* Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden relative bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
         {loading && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-slate-950/60 backdrop-blur-[4px] z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[4px] z-[100] flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
               <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(99,102,241,0.3)]" />
               <div className="text-center">
