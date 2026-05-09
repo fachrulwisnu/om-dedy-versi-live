@@ -1602,13 +1602,24 @@ export default function App() {
   };
 
   const handleDeleteProject = async (id: string) => {
+    const projectToDelete = projects.find(p => p.id === id);
     // Optimistic Delete - disappear instantly
     setProjects(prev => prev.filter(p => p.id !== id));
     if (selectedProjectId === id) setSelectedProjectId(null);
 
     try {
+      // 1. Delete all tasks from this project first (WBS items)
+      await supabase.from('tasks').delete().eq('project_id', id);
+      
+      // 2. Delete the project itself
       const { error } = await supabase.from('projects').delete().eq('id', id);
       if (error) throw error;
+
+      // 3. Delete from master_projects if ticket_id exists
+      if (projectToDelete?.ticket_id) {
+        await supabase.from('master_projects').delete().eq('ticket_id', projectToDelete.ticket_id);
+      }
+
       setNotif('Project berhasil dihapus');
     } catch (err: any) {
       console.error("Failed to delete project:", err);

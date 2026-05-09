@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { 
   FolderKanban, 
   Search, 
@@ -14,7 +16,10 @@ import {
   CheckCircle2,
   Zap,
   SkipForward,
-  TrendingUp
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
@@ -38,6 +43,10 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
   const [isImporting, setIsImporting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
 
   const fetchData = async () => {
     setLoading(true);
@@ -62,6 +71,95 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
     const matchesStatus = statusFilter === 'ALL' || p.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
+  const paginatedProjects = filteredProjects.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const exportMasterProjects = async (projectsData: MasterProjectType[]) => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Master Project Data');
+
+    // 1. SET PRECISE COLUMNS
+    sheet.columns = [
+      { header: '', key: 'ticketId', width: 20 },
+      { header: '', key: 'projectName', width: 45 },
+      { header: '', key: 'status', width: 25 },
+      { header: '', key: 'picName', width: 35 },
+      { header: '', key: 'ownerDiv', width: 35 }
+    ];
+
+    // 2. MAIN HEADER (Merged A1 to E1)
+    sheet.mergeCells('A1:E1');
+    const title = sheet.getCell('A1');
+    title.value = 'OM DEDY - MASTER PROJECT DATA & IMPORT';
+    title.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FF1E3A8A' } }; // Dark Blue
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    
+    sheet.addRow([]); // Spacer
+
+    // 3. STATUS GUIDE FOR USERS
+    const guideTitle = sheet.addRow(['ALLOWED STATUS VALUES (For new imports):', '', '', '', '']);
+    guideTitle.getCell(1).font = { name: 'Arial', bold: true, color: { argb: 'FF333333' } };
+    
+    ['OPEN', 'ON QUEUE', 'ON PROGRESS', 'LIVE'].forEach(statusText => {
+      const row = sheet.addRow([`- ${statusText}`]);
+      row.getCell(1).font = { name: 'Arial', italic: true, color: { argb: 'FF666666' } };
+    });
+    
+    sheet.addRow([]); // Spacer before table
+
+    // 4. TABLE HEADERS
+    const headerRow = sheet.addRow(['TICKET ID', 'PROJECT NAME', 'STATUS', 'PIC NAME', 'OWNER / DIV']);
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; // Dark Blue
+      cell.font = { name: 'Arial', bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { top: { style:'thin' }, left: { style:'thin' }, bottom: { style:'thin' }, right: { style:'thin' } };
+    });
+
+    // 5. INJECT REAL DATABASE DATA
+    if (projectsData && projectsData.length > 0) {
+      projectsData.forEach(p => {
+        const row = sheet.addRow([
+          p.ticket_id || '-',
+          p.project_name || '-',
+          (p.global_status || p.status || 'OPEN').toUpperCase(),
+          p.pic_name || '-',
+          p.div_owner || '-'
+        ]);
+        
+        row.eachCell((cell, colNumber) => {
+          cell.font = { name: 'Arial', size: 11 };
+          cell.border = { top: { style:'thin' }, left: { style:'thin' }, bottom: { style:'thin' }, right: { style:'thin' } };
+          // Center align Ticket ID and Status
+          if (colNumber === 1 || colNumber === 3) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
+        });
+      });
+    } else {
+      // Fallback if database is empty (acts as template)
+      const dummyRow = sheet.addRow(['Example: 1001', 'Example Project', 'OPEN', 'Fachrul Wisnu', 'IT Div']);
+      dummyRow.eachCell((cell) => {
+        cell.font = { name: 'Arial', size: 11, italic: true };
+        cell.border = { top: { style:'thin' }, left: { style:'thin' }, bottom: { style:'thin' }, right: { style:'thin' } };
+      });
+    }
+
+    // 6. GENERATE & DOWNLOAD
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), 'OmDedy_MasterProject_Export.xlsx');
+  };
 
   const handleOpenAudit = async (project: MasterProjectType) => {
     handleOpenDetail(project);
@@ -89,7 +187,10 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
         status: selectedProject.status,
         pic_name: selectedProject.pic_name,
         owner_name: selectedProject.owner_name,
-        div_owner: selectedProject.div_owner
+        div_owner: selectedProject.div_owner,
+        plan_start_date: selectedProject.plan_start_date,
+        plan_end_date: selectedProject.plan_end_date,
+        total_man_hours: selectedProject.total_man_hours
       }, user?.email || 'Admin');
       setIsEditMode(false);
       fetchData();
@@ -159,8 +260,42 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
     }
   };
 
+  const openCount = projects.filter(p => (p.global_status || p.status || '').toUpperCase() === 'OPEN').length;
+  const queueCount = projects.filter(p => {
+    const s = (p.global_status || p.status || '').toUpperCase();
+    return s === 'ON QUEUE' || s === 'TO DO';
+  }).length;
+  const progressCount = projects.filter(p => {
+    const s = (p.global_status || p.status || '').toUpperCase();
+    return s.includes('PROGRESS');
+  }).length;
+  const liveCount = projects.filter(p => {
+    const s = (p.global_status || p.status || '').toUpperCase();
+    return s === 'LIVE' || s === 'DONE';
+  }).length;
+
   return (
     <div className={cn("h-full flex flex-col space-y-6 pb-12", isMobile ? "px-2" : "px-0")}>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+        <div className="bg-blue-900/20 border border-blue-800/50 p-4 rounded-3xl backdrop-blur-sm">
+          <p className="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em] mb-1">STATUS OPEN</p>
+          <h2 className="text-3xl text-white font-black italic">{openCount}</h2>
+        </div>
+        <div className="bg-slate-800/40 border border-slate-700/50 p-4 rounded-3xl backdrop-blur-sm">
+          <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-1">ON QUEUE</p>
+          <h2 className="text-3xl text-white font-black italic">{queueCount}</h2>
+        </div>
+        <div className="bg-indigo-900/20 border border-indigo-800/50 p-4 rounded-3xl backdrop-blur-sm">
+          <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mb-1">ON PROGRESS</p>
+          <h2 className="text-3xl text-white font-black italic">{progressCount}</h2>
+        </div>
+        <div className="bg-emerald-900/20 border border-emerald-800/50 p-4 rounded-3xl backdrop-blur-sm">
+          <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em] mb-1">LIVE PROJECTS</p>
+          <h2 className="text-3xl text-white font-black italic">{liveCount}</h2>
+        </div>
+      </div>
+
       {/* Header & Controls */}
       <div className={cn("flex flex-wrap items-center justify-between gap-6 bg-slate-900/50 p-6 rounded-[2.5rem] border border-slate-800 shadow-2xl", isMobile && "flex-col items-stretch")}>
         <div className="flex items-center gap-5">
@@ -196,6 +331,13 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
               <option value="DONE">DONE</option>
            </select>
            <div className="flex items-center gap-2">
+             <button 
+               onClick={() => exportMasterProjects(projects)}
+               className="bg-slate-800 hover:bg-slate-700 text-white p-3.5 rounded-2xl transition-all shadow-lg border border-slate-700"
+               title="Download Template"
+             >
+                 <Download className="w-5 h-5" />
+             </button>
              <button 
                onClick={() => {
                  setImportSummary(null);
@@ -296,7 +438,7 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">No Projects Found in the Perimeter</span>
               </div>
             </div>
-          ) : filteredProjects.map((p) => (
+          ) : paginatedProjects.map((p) => (
             <div 
               key={p.id} 
               className={cn(
@@ -403,6 +545,58 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
             </div>
           ))}
         </div>
+
+        {/* Pagination Footer */}
+        {totalPages > 1 && (
+          <div className="bg-slate-950/50 border-t border-slate-800 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">
+              Showing <span className="text-white italic">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-white italic">{Math.min(currentPage * itemsPerPage, filteredProjects.length)}</span> of <span className="text-white italic">{filteredProjects.length}</span> Results
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="p-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum = i + 1;
+                  if (totalPages > 5 && currentPage > 3) {
+                    pageNum = currentPage - 3 + i + 1;
+                    if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={cn(
+                        "w-8 h-8 rounded-xl text-[10px] font-black transition-all border",
+                        currentPage === pageNum 
+                          ? "bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-600/20" 
+                          : "bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700 hover:text-slate-300"
+                      )}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button 
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Project Detail & Edit Drawer */}
@@ -421,7 +615,7 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-xl bg-[#0B1120] border-l border-slate-800 h-full flex flex-col shadow-2xl"
+              className="relative w-full max-w-3xl bg-[#0B1120] border-l border-slate-800 h-full flex flex-col shadow-2xl"
             >
                <div className="p-8 border-b border-white/5 bg-slate-900/50 shrink-0">
                   <div className="flex items-center justify-between">
@@ -453,18 +647,18 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
                <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
                   {isEditMode ? (
                     <div className="space-y-6">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Project Name</label>
-                        <input 
-                          type="text"
-                          value={selectedProject.project_name}
-                          onChange={e => setSelectedProject({ ...selectedProject, project_name: e.target.value })}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Status</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Project Name</label>
+                          <input 
+                            type="text"
+                            value={selectedProject.project_name}
+                            onChange={e => setSelectedProject({ ...selectedProject, project_name: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Global Status</label>
                           <select 
                             value={selectedProject.status}
                             onChange={e => setSelectedProject({ ...selectedProject, status: e.target.value })}
@@ -473,8 +667,21 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
                             <option value="OPEN">OPEN</option>
                             <option value="ON QUEUE">ON QUEUE</option>
                             <option value="ON PROGRESS">ON PROGRESS</option>
+                            <option value="LIVE">LIVE</option>
                             <option value="DONE">DONE</option>
                           </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">PIC Name</label>
+                          <input 
+                            type="text"
+                            value={selectedProject.pic_name}
+                            onChange={e => setSelectedProject({ ...selectedProject, pic_name: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
+                          />
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Owner Name</label>
@@ -486,16 +693,8 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">PIC Name</label>
-                          <input 
-                            type="text"
-                            value={selectedProject.pic_name}
-                            onChange={e => setSelectedProject({ ...selectedProject, pic_name: e.target.value })}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
-                          />
-                        </div>
+
+                      <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Division</label>
                           <input 
@@ -505,7 +704,38 @@ export function MasterProject({ user, isMobile }: { user: any, isMobile?: boolea
                             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
                           />
                         </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Total Man Hours</label>
+                          <input 
+                            type="number"
+                            value={selectedProject.total_man_hours || 0}
+                            onChange={e => setSelectedProject({ ...selectedProject, total_man_hours: Number(e.target.value) })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
+                          />
+                        </div>
                       </div>
+
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Plan Start Date</label>
+                          <input 
+                            type="date"
+                            value={selectedProject.plan_start_date ? selectedProject.plan_start_date.substring(0, 10) : ''}
+                            onChange={e => setSelectedProject({ ...selectedProject, plan_start_date: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Plan End Date</label>
+                          <input 
+                            type="date"
+                            value={selectedProject.plan_end_date ? selectedProject.plan_end_date.substring(0, 10) : ''}
+                            onChange={e => setSelectedProject({ ...selectedProject, plan_end_date: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:border-indigo-500 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+
                       <div className="flex gap-4 pt-6">
                         <button 
                           onClick={() => setIsEditMode(false)}

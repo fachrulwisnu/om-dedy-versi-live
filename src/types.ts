@@ -143,6 +143,9 @@ export interface MasterProject {
   pic_name: string;
   owner_name: string;
   div_owner: string;
+  plan_start_date?: string;
+  plan_end_date?: string;
+  total_man_hours?: number;
   created_at: string;
   updated_at: string;
 }

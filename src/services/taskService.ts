@@ -659,7 +659,10 @@ export const taskService = {
           normalize(existingRecord.pic_name) !== normalize(p.pic_name) || 
           normalize(existingRecord.owner_name) !== normalize(p.owner_name) ||
           normalize(existingRecord.div_owner) !== normalize(p.div_owner) ||
-          normalize(existingRecord.project_name) !== normalize(p.project_name);
+          normalize(existingRecord.project_name) !== normalize(p.project_name) ||
+          normalize(existingRecord.plan_start_date) !== normalize(p.plan_start_date) ||
+          normalize(existingRecord.plan_end_date) !== normalize(p.plan_end_date) ||
+          Number(existingRecord.total_man_hours || 0) !== Number(p.total_man_hours || 0);
 
         if (hasChanges) {
           const changedFields: any = {};
@@ -668,6 +671,9 @@ export const taskService = {
           if (normalize(existingRecord.owner_name) !== normalize(p.owner_name)) changedFields.owner_name = { from: existingRecord.owner_name, to: p.owner_name };
           if (normalize(existingRecord.div_owner) !== normalize(p.div_owner)) changedFields.div_owner = { from: existingRecord.div_owner, to: p.div_owner };
           if (normalize(existingRecord.project_name) !== normalize(p.project_name)) changedFields.project_name = { from: existingRecord.project_name, to: p.project_name };
+          if (normalize(existingRecord.plan_start_date) !== normalize(p.plan_start_date)) changedFields.plan_start_date = { from: existingRecord.plan_start_date, to: p.plan_start_date };
+          if (normalize(existingRecord.plan_end_date) !== normalize(p.plan_end_date)) changedFields.plan_end_date = { from: existingRecord.plan_end_date, to: p.plan_end_date };
+          if (Number(existingRecord.total_man_hours || 0) !== Number(p.total_man_hours || 0)) changedFields.total_man_hours = { from: existingRecord.total_man_hours, to: p.total_man_hours };
 
           await supabase
             .from('master_projects')
